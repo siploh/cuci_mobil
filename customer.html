@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Cek Status Car Wash</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{margin:0;font-family:Arial;background:#f5f7fa}
+header{background:#0d6efd;color:#fff;padding:15px;text-align:center}
+.card{background:#fff;padding:20px;margin:20px;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,.1)}
+input,button{width:100%;padding:12px;margin-bottom:10px;border-radius:8px;border:1px solid #ccc}
+button{background:#198754;color:#fff;border:none;font-size:16px}
+.status{font-weight:bold;padding:10px;border-radius:8px;text-align:center}
+.MENUNGGU{background:#fff3cd;color:#856404}
+.PROSES{background:#cfe2ff;color:#084298}
+.SELESAI{background:#d1e7dd;color:#0f5132}
+.hidden{display:none}
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>🚗 Status Car Wash</h2>
+<p>Cek progres pengerjaan mobil Anda</p>
+</header>
+
+<div class="card" id="login">
+<h3>Login Customer</h3>
+<input id="nama" placeholder="Nama Anda">
+<input id="mobil" placeholder="Mobil Anda">
+<button onclick="cekStatus()">Cek Status</button>
+</div>
+
+<div class="card hidden" id="result">
+<h3>📋 Status Booking</h3>
+<div id="data"></div>
+<button onclick="reset()">🔄 Cek Booking Lain</button>
+</div>
+
+<script>
+const API = "https://script.google.com/macros/s/AKfycbxXtB_x11W272ns9glU89H-4RPNDeNa7VKPZMVNFUApf4bPw9TpJuxM3zHMAe04DdTU/exec";
+
+function cekStatus(){
+  const nama = document.getElementById("nama").value.trim();
+  const mobil = document.getElementById("mobil").value.trim();
+
+  if(!nama || !mobil){
+    alert("Nama dan Mobil wajib diisi");
+    return;
+  }
+
+  fetch(`${API}?action=getCustomerBooking&nama=${encodeURIComponent(nama)}&mobil=${encodeURIComponent(mobil)}`)
+  .then(r=>r.json())
+  .then(rows=>{
+    if(rows.length === 0){
+      alert("Booking tidak ditemukan");
+      return;
+    }
+
+    let html="";
+    rows.forEach(r=>{
+      html+=`
+      <p><b>Nama:</b> ${r[1]}</p>
+      <p><b>Mobil:</b> ${r[2]}</p>
+      <p><b>Paket:</b> ${r[3]}</p>
+      <p><b>Pembayaran:</b> ${r[4]}</p>
+      <div class="status ${r[5]}">${r[5]}</div>
+      <hr>`;
+    });
+
+    document.getElementById("data").innerHTML = html;
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("result").classList.remove("hidden");
+  });
+}
+
+function reset(){
+  document.getElementById("login").classList.remove("hidden");
+  document.getElementById("result").classList.add("hidden");
+}
+</script>
+
+</body>
+</html>

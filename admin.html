@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Super Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+
+<style>
+:root{
+ --primary:#2563eb;
+ --success:#16a34a;
+ --warning:#f59e0b;
+ --danger:#dc2626;
+ --bg:#f1f5f9;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Poppins;background:var(--bg)}
+header{
+ background:linear-gradient(135deg,#2563eb,#1e40af);
+ color:#fff;padding:20px;
+ display:flex;justify-content:space-between;align-items:center;
+ position:sticky;top:0;z-index:20
+}
+.container{padding:20px}
+.card{
+ background:#fff;border-radius:16px;
+ padding:20px;margin-bottom:20px;
+ box-shadow:0 10px 25px rgba(0,0,0,.08)
+}
+
+/* STATS */
+.stats{
+ display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+ gap:15px;margin-bottom:20px
+}
+.stat{padding:16px;border-radius:14px;color:#fff}
+.blue{background:#2563eb}
+.green{background:#16a34a}
+.orange{background:#f59e0b}
+.red{background:#dc2626}
+.purple{background:#7c3aed}
+
+/* FILTER */
+.filter{
+ display:flex;flex-wrap:wrap;gap:10px;
+ align-items:center;margin-bottom:10px
+}
+select,input,button{
+ padding:8px 12px;border-radius:8px;
+ border:1px solid #ddd;font-family:Poppins
+}
+button{cursor:pointer;border:none}
+.primary{background:var(--primary);color:#fff}
+.success{background:var(--success);color:#fff}
+.warning{background:var(--warning);color:#fff}
+
+/* TABLE */
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;margin-top:10px;min-width:900px}
+th,td{padding:10px;border-bottom:1px solid #eee;font-size:13px}
+th{background:#f8fafc}
+tr:hover{background:#f1f5f9}
+.right{text-align:right}
+.center{text-align:center}
+.mono{font-family:monospace}
+
+/* BADGE */
+.badge{
+ padding:4px 8px;border-radius:6px;
+ font-size:11px;color:#fff;
+ display:inline-flex;gap:5px;align-items:center
+}
+.MENUNGGU{background:#64748b}
+.PROSES{background:#0ea5e9}
+.SELESAI{background:#16a34a}
+.BATAL{background:#dc2626}
+
+/* LOADING */
+.loading{
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ padding:30px;
+ color:#2563eb;
+ gap:10px;
+ animation:fade .3s ease;
+}
+.spinner{
+ width:22px;height:22px;
+ border:3px solid #c7d2fe;
+ border-top:3px solid #2563eb;
+ border-radius:50%;
+ animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+</style>
+</head>
+
+<body>
+
+<header>
+ <h2>📊 Dashboard Super Admin</h2>
+ <span>Manajemen Booking Car Wash</span>
+</header>
+
+<div class="container">
+
+<!-- STAT -->
+<div class="stats">
+ <div class="stat blue">Total Booking<br><b id="statTotal">0</b></div>
+ <div class="stat green">Selesai<br><b id="statSelesai">0</b></div>
+ <div class="stat orange">Proses<br><b id="statProses">0</b></div>
+ <div class="stat red">Batal<br><b id="statBatal">0</b></div>
+ <div class="stat purple">Total Omzet<br><b id="statOmzet">Rp 0</b></div>
+</div>
+
+<div class="card">
+
+<!-- FILTER -->
+<div class="filter">
+ <select id="filterStatus" onchange="applyFilter()">
+  <option value="">SEMUA STATUS</option>
+  <option>MENUNGGU</option>
+  <option>PROSES</option>
+  <option>SELESAI</option>
+  <option>BATAL</option>
+ </select>
+
+ <input type="date" id="tglDari" onchange="applyFilter()">
+ <input type="date" id="tglSampai" onchange="applyFilter()">
+
+ <input id="search" placeholder="🔍 Cari invoice / nama / plat" onkeyup="applyFilter()">
+
+ <button class="success" onclick="refreshData()">🔄 Refresh</button>
+ <button class="success" onclick="today()">Hari Ini</button>
+ <button class="warning" onclick="thisWeek()">Minggu Ini</button>
+ <button class="primary" onclick="exportExcel()">Excel</button>
+</div>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+ <th>Invoice</th>
+ <th>Tanggal</th>
+ <th>Nama</th>
+ <th>Mobil</th>
+ <th>Plat</th>
+ <th>Paket</th>
+ <th class="right">Harga</th>
+ <th>Status</th>
+</tr>
+</thead>
+<tbody id="data"></tbody>
+</table>
+</div>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+const API="https://script.google.com/macros/s/AKfycbxQJHugSX2tWOi8xyuAuMy5SjObFUfKw_6awS0rR7wpp8CFL4MGIX0PeAN2fp4-eqEp/exec";
+const HARGA={
+ "CUCI STANDAR":30000,
+ "CUCI + VACUUM":45000,
+ "FULL DETAILING":150000
+};
+
+let ALL=[],FILTER=[];
+
+/* UTIL */
+function normalizeStatus(s){
+ s=(s||"").toString().trim().toUpperCase();
+ if(s==="DIBATALKAN") return "BATAL";
+ return s;
+}
+function normalizePaket(p){
+ return (p||"").toString().trim().toUpperCase();
+}
+function rupiah(n){
+ return "Rp "+(n||0).toLocaleString("id-ID");
+}
+
+/* LOAD DATA */
+function loadData(){
+ data.innerHTML=`
+  <tr>
+   <td colspan="8">
+    <div class="loading">
+     <div class="spinner"></div> Memuat data...
+    </div>
+   </td>
+  </tr>`;
+
+ fetch(API+"?action=admin")
+ .then(r=>r.json())
+ .then(r=>{
+  ALL=r||[];
+  applyFilter();
+ })
+ .catch(()=>{
+  data.innerHTML=`<tr><td colspan="8" class="center">❌ Gagal memuat data</td></tr>`;
+ });
+}
+
+/* REFRESH */
+function refreshData(){
+ loadData();
+}
+
+/* DATE FILTER */
+function today(){
+ const t=new Date().toISOString().slice(0,10);
+ tglDari.value=t; tglSampai.value=t; applyFilter();
+}
+function thisWeek(){
+ const d=new Date();
+ const f=new Date(d.setDate(d.getDate()-d.getDay())).toISOString().slice(0,10);
+ const l=new Date(d.setDate(d.getDate()+6)).toISOString().slice(0,10);
+ tglDari.value=f; tglSampai.value=l; applyFilter();
+}
+
+/* FILTER */
+function applyFilter(){
+ FILTER=ALL.filter(r=>{
+  const t=new Date(r[0]).toISOString().slice(0,10);
+  const status=normalizeStatus(r[6]);
+  return (!filterStatus.value||status===filterStatus.value)
+   &&(!tglDari.value||t>=tglDari.value)
+   &&(!tglSampai.value||t<=tglSampai.value)
+   &&(!search.value||r.join(" ").toLowerCase().includes(search.value.toLowerCase()));
+ });
+ render();
+}
+
+/* RENDER */
+function render(){
+ let html="",stat={SELESAI:0,PROSES:0,BATAL:0},omzet=0;
+
+ FILTER.forEach(r=>{
+  const status=normalizeStatus(r[6]);
+  const paket=normalizePaket(r[5]);
+  const harga=HARGA[paket]||0;
+
+  omzet+=harga;
+  stat[status]=(stat[status]||0)+1;
+
+  html+=`
+  <tr>
+   <td class="mono">${r[1]}</td>
+   <td>${new Date(r[0]).toLocaleString("id-ID")}</td>
+   <td>${r[2]}</td>
+   <td>${r[3]}</td>
+   <td>${r[4]}</td>
+   <td>${paket}</td>
+   <td class="right">${rupiah(harga)}</td>
+   <td><span class="badge ${status}">${status}</span></td>
+  </tr>`;
+ });
+
+ data.innerHTML=html||`<tr><td colspan="8" class="center">Data kosong</td></tr>`;
+ statTotal.textContent=FILTER.length;
+ statSelesai.textContent=stat.SELESAI||0;
+ statProses.textContent=stat.PROSES||0;
+ statBatal.textContent=stat.BATAL||0;
+ statOmzet.textContent=rupiah(omzet);
+}
+
+/* EXPORT */
+function exportExcel(){
+ const d=[["Invoice","Tanggal","Nama","Mobil","Plat","Paket","Harga","Status"]];
+ FILTER.forEach(r=>{
+  d.push([
+   r[1],
+   new Date(r[0]).toLocaleString("id-ID"),
+   r[2],r[3],r[4],
+   normalizePaket(r[5]),
+   HARGA[normalizePaket(r[5])]||0,
+   normalizeStatus(r[6])
+  ]);
+ });
+ const ws=XLSX.utils.aoa_to_sheet(d);
+ const wb=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb,ws,"Laporan");
+ XLSX.writeFile(wb,"Laporan_Car_Wash.xlsx");
+}
+
+/* INIT */
+loadData();
+</script>
+
+</body>
+</html>

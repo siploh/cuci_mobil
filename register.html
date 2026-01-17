@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Car Wash Premium</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(135deg,#0d6efd,#6ea8fe);
+  min-height:100vh;
+}
+.hidden{display:none}
+
+/* LOADING */
+#pageLoading{
+  position:fixed; inset:0;
+  background:linear-gradient(135deg,#0d6efd,#084298);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  z-index:99999;
+  color:#fff;
+}
+.logo-spinner{
+  width:90px;
+  height:90px;
+  animation:spin 1.2s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* HEADER */
+header{
+  color:#fff;
+  text-align:center;
+  padding:25px 15px;
+}
+
+/* CONTAINER */
+.container{max-width:420px;margin:auto}
+
+/* CARD */
+.card{
+  background:#fff;
+  border-radius:20px;
+  padding:25px;
+  margin:20px;
+  box-shadow:0 20px 40px rgba(0,0,0,.15);
+}
+.card h3{text-align:center;color:#0d6efd;margin-top:0}
+
+/* FORM */
+input,select,textarea{
+  width:100%;
+  padding:13px;
+  margin-bottom:12px;
+  border-radius:12px;
+  border:1px solid #ddd;
+  font-family:inherit;
+}
+button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:14px;
+  background:linear-gradient(135deg,#0d6efd,#084298);
+  color:#fff;
+  font-size:15px;
+  cursor:pointer;
+  margin-bottom:8px;
+}
+button.secondary{background:#6c757d}
+button.logout{background:linear-gradient(135deg,#dc3545,#b02a37)}
+
+/* STATUS */
+.status{
+  padding:6px;
+  border-radius:8px;
+  text-align:center;
+  font-size:12px;
+  font-weight:600;
+  margin-top:8px;
+}
+.MENUNGGU{background:#fff3cd;color:#664d03}
+.PROSES{background:#cff4fc;color:#055160}
+.SELESAI{background:#d1e7dd;color:#0f5132}
+
+/* HISTORI */
+.histori-item{
+  border-left:4px solid #0d6efd;
+  padding:12px;
+  margin-bottom:12px;
+  background:#f8f9fa;
+  border-radius:10px;
+  font-size:13px;
+}
+.histori-meta{
+  font-size:12px;
+  color:#6c757d;
+  margin-bottom:6px;
+}
+.invoice{font-weight:600;color:#0d6efd}
+</style>
+</head>
+
+<body>
+
+<div id="pageLoading">
+  <img src="https://via.placeholder.com/150?text=LOGO" class="logo-spinner">
+  <p>Memuat aplikasi...</p>
+</div>
+
+<header>
+  <h2>🚗 Car Wash Premium</h2>
+  <p>Profesional & Terpercaya</p>
+</header>
+
+<div class="container">
+
+<!-- REGISTER -->
+<div id="registerBox" class="card">
+  <h3>Register</h3>
+  <input id="rNama" placeholder="Nama">
+  <input id="rWa" placeholder="WhatsApp">
+  <textarea id="rAlamat" placeholder="Alamat"></textarea>
+  <input id="rMobil" placeholder="Mobil">
+  <input id="rPlat" placeholder="No Plat">
+  <input id="rPass" type="password" placeholder="Password">
+  <button onclick="register()">Register</button>
+  <button class="secondary" onclick="showLogin()">Login</button>
+</div>
+
+<!-- LOGIN -->
+<div id="loginBox" class="card hidden">
+  <h3>Login</h3>
+  <input id="lNama" placeholder="Nama">
+  <input id="lPass" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- BOOKING -->
+<div id="bookingBox" class="card hidden">
+  <h3>Booking Cuci Mobil</h3>
+
+  <p><b>Nama:</b> <span id="custNama"></span></p>
+  <p><b>Mobil:</b> <span id="custMobil"></span></p>
+  <p><b>No Plat:</b> <span id="custPlat"></span></p>
+
+  <select id="paket">
+    <option>Cuci Standar</option>
+    <option>Cuci + Vacuum</option>
+    <option>Full Detailing</option>
+  </select>
+
+  <select id="bayar">
+    <option>Transfer</option>
+    <option>QRIS</option>
+    <option>Bayar di Tempat</option>
+  </select>
+
+  <button onclick="doBooking()">Booking</button>
+  <button class="secondary" onclick="showHistori()">Status & Histori Booking</button>
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<!-- HISTORI -->
+<div id="historiBox" class="card hidden">
+  <h3>Status & Histori Booking</h3>
+  <div id="historiList"></div>
+  <button class="secondary" onclick="backBooking()">Kembali</button>
+</div>
+
+</div>
+
+<script>
+const API_URL="https://script.google.com/macros/s/AKfycbxQJHugSX2tWOi8xyuAuMy5SjObFUfKw_6awS0rR7wpp8CFL4MGIX0PeAN2fp4-eqEp/exec";
+
+document.addEventListener("DOMContentLoaded",()=>{
+  setTimeout(()=>pageLoading.style.display="none",800);
+});
+
+/* REGISTER */
+function register(){
+  fetch(`${API_URL}?action=register&nama=${rNama.value}&wa=${rWa.value}&alamat=${rAlamat.value}&mobil=${rMobil.value}&plat=${rPlat.value}&pass=${rPass.value}`)
+  .then(r=>r.json()).then(res=>{
+    if(!res.ok){alert(res.msg);return;}
+    alert("Register berhasil");
+    showLogin();
+  });
+}
+
+/* LOGIN */
+function login(){
+  fetch(`${API_URL}?action=login&nama=${lNama.value}&pass=${lPass.value}`)
+  .then(r=>r.json()).then(res=>{
+    if(!res.ok){alert("Login gagal");return;}
+    localStorage.setItem("customer",JSON.stringify(res.user));
+    custNama.innerText=res.user.nama;
+    custMobil.innerText=res.user.mobil;
+    custPlat.innerText=res.user.plat;
+    registerBox.classList.add("hidden");
+    loginBox.classList.add("hidden");
+    bookingBox.classList.remove("hidden");
+  });
+}
+
+/* BOOKING */
+function doBooking(){
+  const u=JSON.parse(localStorage.getItem("customer"));
+  fetch(`${API_URL}?action=booking&nama=${u.nama}&mobil=${u.mobil}&plat=${u.plat}&paket=${paket.value}&bayar=${bayar.value}`)
+  .then(()=>alert("Booking berhasil"));
+}
+
+/* STATUS & HISTORI */
+function showHistori(){
+  bookingBox.classList.add("hidden");
+  historiBox.classList.remove("hidden");
+  historiList.innerHTML="Memuat...";
+
+  const u=JSON.parse(localStorage.getItem("customer"));
+
+  fetch(`${API_URL}?action=status&nama=${u.nama}`)
+  .then(r=>r.json()).then(rows=>{
+    if(rows.length===0){
+      historiList.innerHTML="Belum ada booking";
+      return;
+    }
+
+    let html="";
+    rows.reverse().forEach(r=>{
+      const tgl=new Date(r[0]).toLocaleDateString("id-ID");
+      html+=`
+      <div class="histori-item">
+        <div class="histori-meta">
+          📅 ${tgl}<br>
+          🧾 Invoice: <span class="invoice">${r[1]}</span>
+        </div>
+        <b>${r[3]}</b> (${r[4]})<br>
+        Paket: ${r[5]}<br>
+        Bayar: ${r[7]}
+        <div class="status ${r[6]}">${r[6]}</div>
+      </div>`;
+    });
+
+    historiList.innerHTML=html;
+  });
+}
+
+function backBooking(){
+  historiBox.classList.add("hidden");
+  bookingBox.classList.remove("hidden");
+}
+function showLogin(){
+  registerBox.classList.add("hidden");
+  loginBox.classList.remove("hidden");
+}
+function logout(){
+  localStorage.clear();
+  bookingBox.classList.add("hidden");
+  historiBox.classList.add("hidden");
+  loginBox.classList.remove("hidden");
+}
+</script>
+
+</body>
+</html>

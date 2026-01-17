@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Admin - Car Wash</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{margin:0;font-family:Arial;background:#f4f6f8}
+header{background:#0d6efd;color:#fff;padding:15px;text-align:center}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{padding:10px;border:1px solid #ddd;font-size:14px}
+th{background:#0d6efd;color:#fff}
+select{padding:6px}
+.card{background:#fff;padding:20px;margin:20px;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,.1)}
+button{padding:6px 10px;border:none;border-radius:6px;background:#198754;color:#fff;cursor:pointer;font-size:13px}
+button.print{background:#0d6efd}
+button:hover{opacity:.9}
+.filter{margin-bottom:10px}
+.right{text-align:right}
+.center{text-align:center}
+.mono{font-family:monospace}
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>📊 Dashboard Admin</h2>
+<p>Manajemen Booking Car Wash</p>
+</header>
+
+<div class="card">
+
+<div class="filter">
+  <label><b>Filter Status:</b></label>
+  <select id="filterStatus" onchange="render()">
+    <option value="">SEMUA</option>
+    <option value="MENUNGGU">MENUNGGU</option>
+    <option value="PROSES">PROSES</option>
+    <option value="SELESAI">SELESAI</option>
+    <option value="BATAL">BATAL</option>
+  </select>
+  <button onclick="loadData()">🔄 Refresh</button>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Invoice</th>
+<th>Tanggal</th>
+<th>Nama</th>
+<th>Mobil</th>
+<th>No Plat</th>
+<th>Paket</th>
+<th>Harga</th>
+<th>Bayar</th>
+<th>Status</th>
+<th>Aksi</th>
+</tr>
+</thead>
+<tbody id="data"></tbody>
+</table>
+
+</div>
+
+<script>
+/* ================= KONFIG ================= */
+const API_URL = "https://script.google.com/macros/s/AKfycbxQJHugSX2tWOi8xyuAuMy5SjObFUfKw_6awS0rR7wpp8CFL4MGIX0PeAN2fp4-eqEp/exec";
+
+const HARGA_PAKET = {
+  "Cuci Standar": 30000,
+  "Cuci + Vacuum": 45000,
+  "Full Detailing": 150000
+};
+
+let ALL_ROWS = [];
+
+/* ================= UTIL ================= */
+function rupiah(n){
+  return "Rp " + (n||0).toLocaleString("id-ID");
+}
+
+/* ================= LOAD DATA ================= */
+function loadData(){
+  fetch(API_URL + "?action=admin")
+  .then(r=>r.json())
+  .then(rows=>{
+    ALL_ROWS = rows;
+    render();
+  });
+}
+
+/* ================= RENDER ================= */
+function render(){
+  const filter = document.getElementById("filterStatus").value;
+  let html = "";
+
+  ALL_ROWS.forEach((r,i)=>{
+    if(filter && r[6] !== filter) return;
+
+    const harga = HARGA_PAKET[r[5]] || 0;
+
+    html += `
+    <tr>
+      <td class="mono">${r[1]}</td>
+      <td>${new Date(r[0]).toLocaleString("id-ID")}</td>
+      <td>${r[2]}</td>
+      <td>${r[3]}</td>
+      <td class="mono">${r[4]}</td>
+      <td>${r[5]}</td>
+      <td class="right">${rupiah(harga)}</td>
+      <td>${r[7]}</td>
+      <td>
+        <select id="status-${i}">
+          <option ${r[6]=="MENUNGGU"?"selected":""}>MENUNGGU</option>
+          <option ${r[6]=="PROSES"?"selected":""}>PROSES</option>
+          <option ${r[6]=="SELESAI"?"selected":""}>SELESAI</option>
+          <option ${r[6]=="BATAL"?"selected":""}>BATAL</option>
+        </select>
+      </td>
+      <td>
+        <button onclick="updateStatus(${i})">Simpan</button>
+        <button class="print" onclick="cetakStruk(${i})">🧾</button>
+      </td>
+    </tr>`;
+  });
+
+  document.getElementById("data").innerHTML =
+    html || `<tr><td colspan="10" class="center">Data tidak ada</td></tr>`;
+}
+
+/* ================= UPDATE STATUS ================= */
+function updateStatus(index){
+  const status = document.getElementById("status-"+index).value;
+  const invoice = ALL_ROWS[index][1];
+
+  fetch(`${API_URL}?action=update&invoice=${invoice}&status=${status}`)
+  .then(()=>{
+    ALL_ROWS[index][6] = status;
+    render();
+    alert("Status diperbarui");
+  });
+}
+
+/* ================= CETAK STRUK ================= */
+function cetakStruk(index){
+  const r = ALL_ROWS[index];
+  const harga = HARGA_PAKET[r[5]] || 0;
+
+  const win = window.open("", "struk", "width=350,height=600");
+
+  win.document.write(`
+  <html>
+  <head>
+    <title>Struk ${r[1]}</title>
+    <style>
+      body{font-family:monospace;font-size:10px}
+      h2{text-align:center;font-size:12px;margin:5px 0}
+      hr{border-top:1px dashed #000}
+      table{width:100%}
+      td{padding:2px 0}
+      .right{text-align:right}
+      .center{text-align:center}
+      .bold{font-weight:bold}
+    </style>
+  </head>
+  <body onload="window.print()">
+    <h2>🚗 CAR WASH PREMIUM</h2>
+    <p class="center bold">STRUK PEMBAYARAN</p>
+    <p class="center">${r[1]}</p>
+    <hr>
+
+    <table>
+      <tr><td>Tanggal</td><td>: ${new Date(r[0]).toLocaleString("id-ID")}</td></tr>
+      <tr><td>Nama</td><td>: ${r[2]}</td></tr>
+      <tr><td>Mobil</td><td>: ${r[3]}</td></tr>
+      <tr><td>No Plat</td><td>: ${r[4]}</td></tr>
+      <tr><td>Paket</td><td>: ${r[5]}</td></tr>
+      <tr><td>Harga</td><td class="right">${rupiah(harga)}</td></tr>
+      <tr><td>Bayar</td><td>: ${r[7]}</td></tr>
+      <tr><td>Status</td><td>: ${r[6]}</td></tr>
+    </table>
+
+    <hr>
+
+    <table>
+      <tr class="bold">
+        <td>Total</td>
+        <td class="right">${rupiah(harga)}</td>
+      </tr>
+    </table>
+
+    <hr>
+    <p class="center">Terima kasih 🙏</p>
+  </body>
+  </html>
+  `);
+
+  win.document.close();
+}
+
+/* ================= INIT ================= */
+loadData();
+</script>
+
+</body>
+</html>
